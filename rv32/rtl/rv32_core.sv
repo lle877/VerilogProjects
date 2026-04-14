@@ -1,26 +1,4 @@
 `include "rv32_pkg.svh"
-
-// ============================================================
-// rv32_core - RV32I 5-stage pipeline (IF / ID / EX / MEM / WB)
-// ------------------------------------------------------------
-// Architecture notes:
-//   - 5-stage pipeline with registers IF/ID, ID/EX, EX/MEM, MEM/WB.
-//   - Ready/valid handshaking on both IMEM and DMEM ports.
-//   - Control hazard: taken branch/jump resolved in EX; flushes IF/ID & ID/EX.
-//   - Structural hazard: memory stall (imem/dmem not ready) freezes all stages.
-//   - Data hazards: NOT implemented (no forwarding, no load-use stall).
-//     Programs must insert >= 3 NOPs between a register write and its next use.
-//
-// Handshake semantics:
-//   IMEM: request when imem_valid; accepted when imem_valid && imem_ready;
-//         instruction consumed when imem_rdata_valid.
-//   DMEM: request when dmem_valid; accepted when dmem_valid && dmem_ready;
-//         load result available when dmem_rdata_valid.
-//
-// Port convention:
-//   - All addresses are byte addresses.
-//   - dmem_wstrb is little-endian: wstrb[0] = byte0 (bits[7:0]).
-// ============================================================
 module rv32_core (
   input  logic        clk,
   input  logic        rst_n,
@@ -184,7 +162,7 @@ module rv32_core (
   // Submodule instances
   // ===========================================================
 
-  // Instruction decode (ID stage â€“ combinatorial from IF/ID reg)
+  // Instruction decode (ID stage â€? combinatorial from IF/ID reg)
   rv32_decode u_dec (
     .instr  (ifid_instr),
     .opcode (id_opcode),
@@ -277,7 +255,7 @@ module rv32_core (
     if (!rst_n)       pc_q <= 32'h0000_0000;
     else if (flush_ex) pc_q <= ex_pc_target;  // redirect on taken branch/jump
     else if (!stall)   pc_q <= pc_q + 32'd4;  // normal sequential advance
-    // else: stall â€“ hold PC
+    // else: stall â€? hold PC
   end
 
   // ===========================================================
@@ -299,7 +277,7 @@ module rv32_core (
       ifid_instr <= imem_rdata;
       ifid_valid <= 1'b1;
     end
-    // else: stall â€“ hold
+    // else: stall â€? hold
   end
 
   // ===========================================================
@@ -464,7 +442,7 @@ module rv32_core (
       idex_mem_req       <= id_mem_req;
       idex_mem_write     <= id_mem_write;
     end
-    // else: stall â€“ hold
+    // else: stall â€? hold
   end
 
   // ===========================================================
@@ -590,7 +568,7 @@ module rv32_core (
       exmem_mem_req     <= idex_mem_req;
       exmem_mem_write   <= idex_mem_write;
     end
-    // else: stall â€“ hold
+    // else: stall â€? hold
   end
 
   // ===========================================================
@@ -638,7 +616,7 @@ module rv32_core (
       memwb_rd     <= exmem_rd;
       memwb_rf_we  <= exmem_rf_we;
     end
-    // else: stall â€“ hold
+    // else: stall â€? hold
   end
 
   // WB stage: register file write is handled by the u_rf instance above.

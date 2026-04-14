@@ -5,7 +5,7 @@ Using 2 slave threads.
 Starting static elaboration
 Completed static elaboration
 Starting simulation data flow analysis
-WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv" Line 24. Module rv32_core doesn't have a timescale but at least one module in design has a timescale.
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv" Line 2. Module rv32_core doesn't have a timescale but at least one module in design has a timescale.
 WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_decode.sv" Line 15. Module rv32_decode doesn't have a timescale but at least one module in design has a timescale.
 WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_imm.sv" Line 15. Module rv32_imm doesn't have a timescale but at least one module in design has a timescale.
 WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_regfile.sv" Line 12. Module rv32_regfile doesn't have a timescale but at least one module in design has a timescale.
