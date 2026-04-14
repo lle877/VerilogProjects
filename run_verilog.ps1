@@ -1,45 +1,48 @@
 param (
-    [string]$Project = 'rv32',
-    [string]$Hex,
-    [string]$Tb = 'tb/tb_rv32.v',
+    [string]$Project    = 'rv32',
+    [string]$Hex        = '',
+    [string]$Tb         = 'tb/tb_rv32_wave.sv',
     [switch]$Clean,
     [switch]$NoWaveform
 )
 
-# Change to project directory
-Set-Location $Project
+$ErrorActionPreference = "Stop"
 
-# Ensure sim directory exists
-if (-not (Test-Path -Path 'sim')) {
-    New-Item -ItemType Directory -Path 'sim'
-}
+$RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location (Join-Path $RepoRoot $Project)
 
-# Compile the design
-$files = Get-ChildItem 'rtl\*.v'
-iverilog -g2012 -o 'sim\tb_rv32.vvp' -I rtl $files.FullName, $Tb
-if ($LASTEXITCODE -ne 0) {
-    Write-Host 'Compilation error. Exiting with code 1.'
-    exit 1
-}
+if ($Clean -and (Test-Path 'sim')) { Remove-Item 'sim\*' -Force -Recurse -ErrorAction SilentlyContinue }
+if (!(Test-Path 'sim')) { New-Item -ItemType Directory -Path 'sim' | Out-Null }
 
-# Run the simulation
-$runArgs = 'sim\tb_rv32.vvp'
-if ($Hex) {
-    $runArgs += " +hex=$Hex"
-}
+$vvp = 'sim\tb_rv32.vvp'
 
-vvp $runArgs
+Write-Host "[INFO] Compiling $Tb ..."
+$svFiles = Get-ChildItem 'rtl\*.sv' | ForEach-Object { $_.FullName }
+$args = @('-g2012','-o',$vvp,'-I','rtl') + $svFiles + @($Tb)
+& iverilog @args
+if ($LASTEXITCODE -ne 0) { Write-Host "[FAIL] Compilation error"; exit 1 }
+Write-Host "[OK]   Compilation succeeded"
 
-# Check for no waveform requirement
-if (-not $NoWaveform) {
-    if (Test-Path 'sim\tb_rv32.vcd' -and (Get-Command gtkwave -ErrorAction SilentlyContinue)) {
-        Start-Process gtkwave 'sim\tb_rv32.vcd'
-    }
-}
+$runArgs = @($vvp)
+if ($Hex -and (Test-Path $Hex)) { $runArgs += "+hex=$((Resolve-Path $Hex).Path)" }
 
-# Exit with 0 on PASS, 1 on FAIL/TIMEOUT/compile error
-if ($LASTEXITCODE -eq 0) {
-    exit 0
+Write-Host "[INFO] Running simulation..."
+$output = & vvp @runArgs 2>&1
+Write-Host $output
+
+$tbLine = ($output | Select-String '\[TB\]' | Select-Object -Last 1).Line
+if ($tbLine -match 'PASS') {
+    Write-Host "[OK]   PASS"; $code = 0
+} elseif ($tbLine -match 'FAIL') {
+    Write-Host "[FAIL] FAIL: $tbLine"; $code = 1
 } else {
-    exit 1
+    Write-Host "[FAIL] TIMEOUT/UNKNOWN"; $code = 1
 }
+
+if (!$NoWaveform -and (Test-Path 'sim\tb_rv32_wave.vcd')) {
+    $gw = Get-Command gtkwave -ErrorAction SilentlyContinue
+    if ($gw) { Start-Process gtkwave 'sim\tb_rv32_wave.vcd' }
+    else { Write-Host "[INFO] VCD: sim\tb_rv32_wave.vcd (open with GTKWave or Vivado)" }
+}
+
+exit $code
