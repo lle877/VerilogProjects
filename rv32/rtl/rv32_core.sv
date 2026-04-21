@@ -1,28 +1,48 @@
 `include "rv32_pkg.svh"
+
+// ============================================================
+// rv32_core - RV32I 五级流水线（IF / ID / EX / MEM / WB）
+// ------------------------------------------------------------
+// 架构说明：
+//   - 五级流水线，包含 IF/ID、ID/EX、EX/MEM、MEM/WB 级间寄存器。
+//   - 当前版本不处理冒险：不做 forwarding、不做 load-use stall、
+//     不做分支 flush，也不处理存储器等待周期。
+//   - 分支/跳转仍在 EX 级计算目标 PC，但软件需自行提供控制延迟槽。
+//   - 程序需在寄存器写回与下一次使用之间插入 >= 3 条 NOP。
+//   - 程序需在可能改变 PC 的分支/跳转后插入 >= 2 条 NOP。
+//
+// 存储器接口约定：
+//   - 端口形式仍保留 ready/valid 信号，便于后续扩展。
+//   - 当前核心按零等待存储器使用这些端口，不会因 ready/valid 停顿。
+//
+// 端口约定：
+//   - 所有地址均为字节地址。
+//   - dmem_wstrb 为小端：wstrb[0] 对应 byte0（bits[7:0]）。
+// ============================================================
 module rv32_core (
   input  logic        clk,
   input  logic        rst_n,
 
-  // Instruction memory
-  output logic        imem_valid,        // core requesting an instruction
-  output logic [31:0] imem_addr,         // fetch address (byte address)
-  input  logic        imem_ready,        // memory accepts request
-  input  logic        imem_rdata_valid,  // instruction data is valid
-  input  logic [31:0] imem_rdata,        // instruction word
+  // 指令存储器
+  output logic        imem_valid,        // 内核请求一条指令
+  output logic [31:0] imem_addr,         // 取指地址（字节地址）
+  input  logic        imem_ready,        // 存储器接受请求
+  input  logic        imem_rdata_valid,  // 指令数据有效
+  input  logic [31:0] imem_rdata,        // 指令字
 
-  // Data memory
-  output logic        dmem_valid,        // core requesting a data access
-  output logic        dmem_we,           // 1=store, 0=load
-  output logic [3:0]  dmem_wstrb,        // byte enables (store only)
-  output logic [31:0] dmem_addr,         // data address (byte address)
-  output logic [31:0] dmem_wdata,        // write data (store only)
-  input  logic        dmem_ready,        // memory accepts request
-  input  logic        dmem_rdata_valid,  // read data valid (load only)
-  input  logic [31:0] dmem_rdata         // read data
+  // 数据存储器
+  output logic        dmem_valid,        // 内核请求一次数据访问
+  output logic        dmem_we,           // 1=存储，0=加载
+  output logic [3:0]  dmem_wstrb,        // 字节写使能（仅存储）
+  output logic [31:0] dmem_addr,         // 数据地址（字节地址）
+  output logic [31:0] dmem_wdata,        // 写数据（仅存储）
+  input  logic        dmem_ready,        // 存储器接受请求
+  input  logic        dmem_rdata_valid,  // 读数据有效（仅加载）
+  input  logic [31:0] dmem_rdata         // 读数据
 );
 
   // -----------------------------------------------------------
-  // ALU operation encodings (must match rv32_alu.v)
+  // ALU 操作编码（必须与 rv32_alu.v 一致）
   // -----------------------------------------------------------
   localparam logic [3:0] ALU_ADD  = 4'd0;
   localparam logic [3:0] ALU_SUB  = 4'd1;
@@ -35,57 +55,53 @@ module rv32_core (
   localparam logic [3:0] ALU_SRL  = 4'd8;
   localparam logic [3:0] ALU_SRA  = 4'd9;
 
-  // ALU A-operand source
+  // ALU A 操作数来源
   localparam logic       ALU_SRC_A_RS1 = 1'b0; // A = rs1
-  localparam logic       ALU_SRC_A_PC  = 1'b1; // A = PC (for AUIPC)
+  localparam logic       ALU_SRC_A_PC  = 1'b1; // A = PC（用于 AUIPC）
 
-  // ALU B-operand source
+  // ALU B 操作数来源
   localparam logic [1:0] ALU_SRC_B_RS2   = 2'd0;
   localparam logic [1:0] ALU_SRC_B_IMM_I = 2'd1;
   localparam logic [1:0] ALU_SRC_B_IMM_S = 2'd2;
   localparam logic [1:0] ALU_SRC_B_IMM_U = 2'd3;
 
-  // Writeback data source
-  localparam logic [1:0] WB_SRC_ALU   = 2'd0; // ALU result
-  localparam logic [1:0] WB_SRC_MEM   = 2'd1; // load data
-  localparam logic [1:0] WB_SRC_PC4   = 2'd2; // PC+4 (JAL/JALR link)
-  localparam logic [1:0] WB_SRC_IMM_U = 2'd3; // imm_u (LUI)
+  // 写回数据来源
+  localparam logic [1:0] WB_SRC_ALU   = 2'd0; // ALU 结果
+  localparam logic [1:0] WB_SRC_MEM   = 2'd1; // 加载数据
+  localparam logic [1:0] WB_SRC_PC4   = 2'd2; // PC+4（JAL/JALR 链接地址）
+  localparam logic [1:0] WB_SRC_IMM_U = 2'd3; // imm_u（LUI）
 
-  // PC next-value source (used in ID stage, evaluated in EX)
+  // PC 下一值来源（在 ID 译码，在 EX 计算）
   localparam logic [1:0] PC_SRC_PC4    = 2'd0;
   localparam logic [1:0] PC_SRC_BRANCH = 2'd1;
   localparam logic [1:0] PC_SRC_JAL    = 2'd2;
   localparam logic [1:0] PC_SRC_JALR   = 2'd3;
 
   // -----------------------------------------------------------
-  // PC register
+  // PC 寄存器
   // -----------------------------------------------------------
   logic [31:0] pc_q;
 
   // -----------------------------------------------------------
-  // Hazard / control signals
+  // 控制信号
   // -----------------------------------------------------------
-  logic imem_stall; // IF waiting for instruction data
-  logic dmem_stall; // MEM waiting for data memory
-  logic stall;      // global stall: freeze all pipeline regs and PC
-  logic flush_ex;   // EX determined branch/jump taken; flush IF/ID and ID/EX
 
   // -----------------------------------------------------------
-  // IF/ID pipeline register
+  // IF/ID 流水寄存器
   // -----------------------------------------------------------
   logic [31:0] ifid_pc;
   logic [31:0] ifid_instr;
   logic        ifid_valid;
 
   // -----------------------------------------------------------
-  // ID stage: decode signals (combinatorial from IF/ID register)
+  // ID 级：译码信号（由 IF/ID 寄存器组合产生）
   // -----------------------------------------------------------
   logic [6:0]  id_opcode, id_funct7;
   logic [2:0]  id_funct3;
   logic [4:0]  id_rd, id_rs1, id_rs2;
   logic [31:0] id_imm_i, id_imm_s, id_imm_b, id_imm_u, id_imm_j;
   logic [31:0] id_rs1_val, id_rs2_val;
-  // ID control signals
+  // ID 控制信号
   logic        id_rf_we;
   logic [1:0]  id_wb_sel;
   logic        id_alu_src_a_sel;
@@ -96,7 +112,7 @@ module rv32_core (
   logic        id_mem_write;
 
   // -----------------------------------------------------------
-  // ID/EX pipeline register
+  // ID/EX 流水寄存器
   // -----------------------------------------------------------
   logic [31:0] idex_pc;
   logic [31:0] idex_rs1_val, idex_rs2_val;
@@ -104,7 +120,7 @@ module rv32_core (
   logic [31:0] idex_imm_i, idex_imm_s, idex_imm_b, idex_imm_u, idex_imm_j;
   logic [2:0]  idex_funct3;
   logic        idex_valid;
-  // ID/EX control
+  // ID/EX 控制信号
   logic        idex_rf_we;
   logic [1:0]  idex_wb_sel;
   logic        idex_alu_src_a_sel;
@@ -115,19 +131,19 @@ module rv32_core (
   logic        idex_mem_write;
 
   // -----------------------------------------------------------
-  // EX stage signals (combinatorial from ID/EX register)
+  // EX 级信号（由 ID/EX 寄存器组合产生）
   // -----------------------------------------------------------
   logic [31:0] ex_alu_a, ex_alu_b, ex_alu_y;
   logic        ex_br_take;
   logic [31:0] ex_pc4, ex_branch_target, ex_jal_target, ex_jalr_target;
   logic        ex_pc_redirect;
   logic [31:0] ex_pc_target;
-  logic [31:0] ex_wb_data;      // non-load writeback data computed in EX
+  logic [31:0] ex_wb_data;      // 在 EX 计算的非加载写回数据
   logic [3:0]  ex_store_wstrb;
   logic [31:0] ex_store_wdata;
 
   // -----------------------------------------------------------
-  // EX/MEM pipeline register
+  // EX/MEM 流水寄存器
   // -----------------------------------------------------------
   logic [31:0] exmem_alu_y;
   logic [3:0]  exmem_store_wstrb;
@@ -135,23 +151,23 @@ module rv32_core (
   logic [4:0]  exmem_rd;
   logic [2:0]  exmem_funct3;
   logic        exmem_valid;
-  logic [31:0] exmem_wb_data;  // non-load writeback data
-  // EX/MEM control
+  logic [31:0] exmem_wb_data;  // 非加载写回数据
+  // EX/MEM 控制信号
   logic        exmem_rf_we;
   logic [1:0]  exmem_wb_sel;
   logic        exmem_mem_req;
   logic        exmem_mem_write;
 
   // -----------------------------------------------------------
-  // MEM stage signals (combinatorial from EX/MEM register)
+  // MEM 级信号（由 EX/MEM 寄存器组合产生）
   // -----------------------------------------------------------
   logic [7:0]  mem_load_byte;
   logic [15:0] mem_load_half;
   logic [31:0] mem_load_data;
-  logic [31:0] mem_wb_data;    // final writeback: load data or ex_wb_data
+  logic [31:0] mem_wb_data;    // 最终写回：加载数据或 ex_wb_data
 
   // -----------------------------------------------------------
-  // MEM/WB pipeline register
+  // MEM/WB 流水寄存器
   // -----------------------------------------------------------
   logic [31:0] memwb_wdata;
   logic [4:0]  memwb_rd;
@@ -159,10 +175,10 @@ module rv32_core (
   logic        memwb_valid;
 
   // ===========================================================
-  // Submodule instances
+  // 子模块实例
   // ===========================================================
 
-  // Instruction decode (ID stage �? combinatorial from IF/ID reg)
+  // 指令译码（ID 级，来自 IF/ID 寄存器的组合逻辑）
   rv32_decode u_dec (
     .instr  (ifid_instr),
     .opcode (id_opcode),
@@ -173,7 +189,7 @@ module rv32_core (
     .rs2    (id_rs2)
   );
 
-  // Immediate generation (ID stage)
+  // 立即数生成（ID 级）
   rv32_imm u_imm (
     .instr (ifid_instr),
     .imm_i (id_imm_i),
@@ -183,7 +199,7 @@ module rv32_core (
     .imm_j (id_imm_j)
   );
 
-  // Register file: reads in ID, writes from WB
+  // 寄存器堆：ID 读，WB 写
   rv32_regfile u_rf (
     .clk    (clk),
     .we     (memwb_rf_we && memwb_valid),
@@ -195,7 +211,7 @@ module rv32_core (
     .rdata2 (id_rs2_val)
   );
 
-  // ALU (EX stage)
+  // ALU（EX 级）
   rv32_alu u_alu (
     .alu_op (idex_alu_op),
     .a      (ex_alu_a),
@@ -203,7 +219,7 @@ module rv32_core (
     .y      (ex_alu_y)
   );
 
-  // Branch comparator (EX stage)
+  // 分支比较器（EX 级）
   rv32_branch u_br (
     .funct3 (idex_funct3),
     .rs1    (idex_rs1_val),
@@ -212,18 +228,15 @@ module rv32_core (
   );
 
   // ===========================================================
-  // IMEM interface
+  // IMEM 接口
   // ===========================================================
-  // De-assert during reset so no spurious fetches are visible to memory.
-  // During a stall the PC is frozen, so re-issuing the same address is safe.
+  // 复位期间拉低，避免对存储器可见的伪取指。
+  // 当前实现假定指令存储器零等待，不根据 ready/valid 进行停顿。
   assign imem_valid = rst_n;
   assign imem_addr  = pc_q;
 
-  // Stall while instruction data has not arrived
-  assign imem_stall = ~imem_rdata_valid;
-
   // ===========================================================
-  // DMEM interface (driven from EX/MEM pipeline register)
+  // DMEM 接口（由 EX/MEM 流水寄存器驱动）
   // ===========================================================
   assign dmem_valid = exmem_valid && exmem_mem_req;
   assign dmem_we    = exmem_mem_write;
@@ -231,60 +244,35 @@ module rv32_core (
   assign dmem_wstrb = exmem_mem_write ? exmem_store_wstrb : 4'b0000;
   assign dmem_wdata = exmem_mem_write ? exmem_store_wdata : 32'h0;
 
-  // Stall while data memory access has not completed:
-  //   store: stall until dmem_ready (request accepted)
-  //   load:  stall until dmem_rdata_valid (data returned)
-  assign dmem_stall = exmem_valid && exmem_mem_req && (
-                        ( exmem_mem_write && ~dmem_ready      ) ||
-                        (~exmem_mem_write && ~dmem_rdata_valid)
-                      );
-
-  // Global stall and flush.
-  // flush_ex is gated by ~stall: when a stall is active the pipeline is frozen,
-  // so the branch/jump instruction stays in the ID/EX register.  On the first
-  // cycle after the stall clears, ex_pc_redirect is still asserted (because
-  // ID/EX still holds the branch/jump), so flush_ex fires then and both
-  // redirects the PC and clears IF/ID and ID/EX in the correct order.
-  assign stall    = imem_stall | dmem_stall;
-  assign flush_ex = ex_pc_redirect && ~stall;
-
   // ===========================================================
-  // PC register
+  // PC 寄存器
   // ===========================================================
   always_ff @(posedge clk) begin
-    if (!rst_n)       pc_q <= 32'h0000_0000;
-    else if (flush_ex) pc_q <= ex_pc_target;  // redirect on taken branch/jump
-    else if (!stall)   pc_q <= pc_q + 32'd4;  // normal sequential advance
-    // else: stall �? hold PC
+    if (!rst_n)            pc_q <= 32'h0000_0000;
+    else if (ex_pc_redirect) pc_q <= ex_pc_target;  // 分支/跳转被采纳时重定向
+    else                    pc_q <= pc_q + 32'd4;   // 正常顺序前进
   end
 
   // ===========================================================
-  // IF/ID pipeline register
+  // IF/ID 流水寄存器
   // ===========================================================
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       ifid_pc    <= 32'h0;
-      ifid_instr <= 32'h0000_0013; // NOP (addi x0,x0,0)
+      ifid_instr <= 32'h0000_0013; // NOP（addi x0,x0,0）
       ifid_valid <= 1'b0;
-    end else if (flush_ex) begin
-      // Discard the instruction that was in flight during fetch.
-      // Use ex_pc_target as debug PC so waveforms show the redirect address.
-      ifid_instr <= 32'h0000_0013;
-      ifid_valid <= 1'b0;
-      ifid_pc    <= ex_pc_target;
-    end else if (!stall) begin
+    end else begin
       ifid_pc    <= pc_q;
       ifid_instr <= imem_rdata;
       ifid_valid <= 1'b1;
     end
-    // else: stall �? hold
   end
 
   // ===========================================================
-  // ID stage: control decoder
+  // ID 级：控制译码器
   // ===========================================================
   always_comb begin
-    // Defaults = NOP: no writeback, no memory, PC+4, ADD
+    // 默认值 = NOP：无写回、无访存、PC+4、ADD
     id_rf_we         = 1'b0;
     id_wb_sel        = WB_SRC_ALU;
     id_alu_src_a_sel = ALU_SRC_A_RS1;
@@ -324,8 +312,8 @@ module rv32_core (
         end
 
         OPC_BRANCH: begin
-          // Actual taken/not-taken decision is made in EX;
-          // pass PC_SRC_BRANCH so EX knows to evaluate the condition.
+          // 实际的取分支/不取分支在 EX 级判定；
+          // 传递 PC_SRC_BRANCH 让 EX 知道需要判断条件。
           id_pc_sel = PC_SRC_BRANCH;
         end
 
@@ -372,7 +360,7 @@ module rv32_core (
           id_alu_src_b_sel = ALU_SRC_B_IMM_I;
           id_alu_op        = ALU_ADD;
           id_mem_req       = 1'b1;
-          // filter unsupported funct3
+          // 过滤不支持的 funct3
           case (id_funct3)
             3'b000, 3'b001, 3'b010, 3'b100, 3'b101: begin end
             default: id_rf_we = 1'b0;
@@ -391,17 +379,17 @@ module rv32_core (
           endcase
         end
 
-        default: begin end // unrecognised opcode -> NOP
+        default: begin end // 未识别 opcode -> NOP
       endcase
     end
   end
 
   // ===========================================================
-  // ID/EX pipeline register
+  // ID/EX 流水寄存器
   // ===========================================================
   always_ff @(posedge clk) begin
-    if (!rst_n || flush_ex) begin
-      // Reset or flush: insert NOP bubble
+    if (!rst_n) begin
+      // 复位：插入 NOP 气泡
       idex_valid         <= 1'b0;
       idex_pc            <= 32'h0;
       idex_rs1_val       <= 32'h0;
@@ -421,7 +409,7 @@ module rv32_core (
       idex_pc_sel        <= PC_SRC_PC4;
       idex_mem_req       <= 1'b0;
       idex_mem_write     <= 1'b0;
-    end else if (!stall) begin
+    end else begin
       idex_valid         <= ifid_valid;
       idex_pc            <= ifid_pc;
       idex_rs1_val       <= id_rs1_val;
@@ -442,20 +430,19 @@ module rv32_core (
       idex_mem_req       <= id_mem_req;
       idex_mem_write     <= id_mem_write;
     end
-    // else: stall �? hold
   end
 
   // ===========================================================
-  // EX stage
+  // EX 级
   // ===========================================================
 
-  // PC target candidates
+  // PC 目标候选
   assign ex_pc4           = idex_pc + 32'd4;
   assign ex_branch_target = idex_pc + idex_imm_b;
   assign ex_jal_target    = idex_pc + idex_imm_j;
   assign ex_jalr_target   = {ex_alu_y[31:1], 1'b0}; // (rs1+imm_i) & ~1
 
-  // ALU operand mux
+  // ALU 操作数多路选择
   assign ex_alu_a = (idex_alu_src_a_sel == ALU_SRC_A_PC) ? idex_pc : idex_rs1_val;
 
   always_comb begin
@@ -468,10 +455,10 @@ module rv32_core (
     endcase
   end
 
-  // Branch/jump PC redirect decision
+  // 分支/跳转的 PC 重定向判定
   always_comb begin
     ex_pc_redirect = 1'b0;
-    ex_pc_target   = ex_pc4; // default (unused when redirect=0)
+    ex_pc_target   = ex_pc4; // 默认值（redirect=0 时不使用）
     if (idex_valid) begin
       case (idex_pc_sel)
         PC_SRC_BRANCH: begin
@@ -488,24 +475,24 @@ module rv32_core (
           ex_pc_redirect = 1'b1;
           ex_pc_target   = ex_jalr_target;
         end
-        default: begin end // PC_SRC_PC4: normal sequential, no redirect
+        default: begin end // PC_SRC_PC4：正常顺序执行，不重定向
       endcase
     end
   end
 
-  // Pre-compute non-load writeback data in EX so MEM/WB only needs one field.
-  // For loads (WB_SRC_MEM), the actual data is selected in the MEM stage;
-  // the placeholder value here is overridden by mem_load_data in mem_wb_data.
+  // 在 EX 预计算非加载写回数据，使 MEM/WB 仅需一个数据字段。
+  // 对于加载（WB_SRC_MEM），真实数据在 MEM 级选择；
+  // 此处占位值会在 mem_wb_data 中被 mem_load_data 覆盖。
   always_comb begin
     case (idex_wb_sel)
       WB_SRC_PC4:   ex_wb_data = ex_pc4;
       WB_SRC_IMM_U: ex_wb_data = idex_imm_u;
       WB_SRC_ALU:   ex_wb_data = ex_alu_y;
-      default:      ex_wb_data = ex_alu_y; // WB_SRC_MEM: overridden in MEM stage
+      default:      ex_wb_data = ex_alu_y; // WB_SRC_MEM：在 MEM 级覆盖
     endcase
   end
 
-  // Store wstrb / wdata generation
+  // 生成存储指令的 wstrb / wdata
   always_comb begin
     ex_store_wstrb = 4'b0000;
     ex_store_wdata = 32'h0;
@@ -539,7 +526,7 @@ module rv32_core (
   end
 
   // ===========================================================
-  // EX/MEM pipeline register
+  // EX/MEM 流水寄存器
   // ===========================================================
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -554,8 +541,8 @@ module rv32_core (
       exmem_wb_sel      <= WB_SRC_ALU;
       exmem_mem_req     <= 1'b0;
       exmem_mem_write   <= 1'b0;
-    end else if (!stall) begin
-      // The branch/jump instruction in EX still moves to MEM (for JAL/JALR WB)
+    end else begin
+      // 分支/跳转指令仍会进入 MEM（用于 JAL/JALR 写回）
       exmem_valid       <= idex_valid;
       exmem_alu_y       <= ex_alu_y;
       exmem_store_wstrb <= ex_store_wstrb;
@@ -568,15 +555,14 @@ module rv32_core (
       exmem_mem_req     <= idex_mem_req;
       exmem_mem_write   <= idex_mem_write;
     end
-    // else: stall �? hold
   end
 
   // ===========================================================
-  // MEM stage: load data formatting + writeback data selection
+  // MEM 级：加载数据格式化 + 写回数据选择
   // ===========================================================
 
   always_comb begin
-    // Select byte/halfword from dmem_rdata based on address alignment
+    // 按地址对齐从 dmem_rdata 中选择字节/半字
     unique case (exmem_alu_y[1:0])
       2'd0: mem_load_byte = dmem_rdata[7:0];
       2'd1: mem_load_byte = dmem_rdata[15:8];
@@ -587,7 +573,7 @@ module rv32_core (
 
     mem_load_half = exmem_alu_y[1] ? dmem_rdata[31:16] : dmem_rdata[15:0];
 
-    // Sign/zero-extend based on funct3
+    // 按 funct3 进行有符号/无符号扩展
     unique case (exmem_funct3)
       3'b000: mem_load_data = {{24{mem_load_byte[7]}}, mem_load_byte}; // LB
       3'b001: mem_load_data = {{16{mem_load_half[15]}}, mem_load_half}; // LH
@@ -598,11 +584,11 @@ module rv32_core (
     endcase
   end
 
-  // Select final writeback data: load result (MEM) or precomputed EX value
+  // 选择最终写回数据：加载结果（MEM）或 EX 预计算值
   assign mem_wb_data = (exmem_wb_sel == WB_SRC_MEM) ? mem_load_data : exmem_wb_data;
 
   // ===========================================================
-  // MEM/WB pipeline register
+  // MEM/WB 流水寄存器
   // ===========================================================
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -610,16 +596,15 @@ module rv32_core (
       memwb_wdata  <= 32'h0;
       memwb_rd     <= 5'h0;
       memwb_rf_we  <= 1'b0;
-    end else if (!stall) begin
+    end else begin
       memwb_valid  <= exmem_valid;
       memwb_wdata  <= mem_wb_data;
       memwb_rd     <= exmem_rd;
       memwb_rf_we  <= exmem_rf_we;
     end
-    // else: stall �? hold
   end
 
-  // WB stage: register file write is handled by the u_rf instance above.
+  // WB 级：寄存器堆写入由上方 u_rf 实例完成。
   // we = memwb_rf_we && memwb_valid, waddr = memwb_rd, wdata = memwb_wdata.
 
 endmodule

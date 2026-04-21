@@ -3,34 +3,35 @@
 // ============================================================
 // tb_rv32
 // ------------------------------------------------------------
-// Testbench for the RV32I 5-stage pipeline core.
+// RV32I 五级流水线内核测试平台。
 //
-// Memory model (zero-wait):
-//   - imem_ready = 1, imem_rdata_valid = imem_valid  (combinational)
+// 存储器模型（零等待）：
+//   - imem_ready = 1, imem_rdata_valid = imem_valid  （组合逻辑）
 //   - dmem_ready = 1
-//   - dmem_rdata_valid = dmem_valid & ~dmem_we        (combinational)
-//   These settings ensure no pipeline stalls occur, so the only
-//   source of bubbles is control-hazard flushing on taken branches/jumps.
+//   - dmem_rdata_valid = dmem_valid & ~dmem_we        （组合逻辑）
+//   当前核心不处理冒险，因此测试程序会显式插入：
+//   - 数据相关气泡：寄存器写后至少 3 条 NOP
+//   - 控制延迟槽：分支/跳转后至少 2 条 NOP
 //
-// PASS/FAIL convention (same as before):
+// PASS/FAIL 约定（与之前一致）：
 //   ram[1] == 1           -> PASS
 //   ram[1] == 0xDEAD_BEEF -> FAIL
 //   timeout               -> TIMEOUT
 //
-// Usage:
+// 用法：
 //   vvp sim/tb_rv32.vvp +hex=tests/xxx.hex
 // ============================================================
 module tb_rv32;
 
   // ----------------------------
-  // Clock / reset
+  // 时钟 / 复位
   // ----------------------------
   reg clk   = 1'b0;
   reg rst_n = 1'b0;
-  always #5 clk = ~clk; // 100 MHz (10 ns period)
+  always #5 clk = ~clk; // 100 MHz（周期 10 ns）
 
   // ----------------------------
-  // DUT <-> TB connections
+  // DUT <-> TB 连接
   // ----------------------------
   // IMEM
   wire        imem_valid;
@@ -68,32 +69,32 @@ module tb_rv32;
   );
 
   // ----------------------------
-  // ROM / RAM arrays
+  // ROM / RAM 数组
   // ----------------------------
   reg [31:0] rom [0:255];
   reg [31:0] ram [0:255];
   integer i;
 
   // ----------------------------
-  // Zero-wait memory model
+  // 零等待存储器模型
   // ----------------------------
-  // IMEM: always ready; rdata_valid fires combinatorially when valid.
-  // Gate on rst_n to avoid latching garbage during reset.
+  // IMEM：始终 ready；当 valid 时，rdata_valid 组合拉高。
+  // 使用 rst_n 门控，避免复位期间锁存无效数据。
   always @(*) begin
     imem_ready       = 1'b1;
-    imem_rdata_valid = rst_n && imem_valid;  // zero-wait: data ready same cycle
+    imem_rdata_valid = rst_n && imem_valid;  // 零等待：同周期数据有效
     imem_rdata       = rom[imem_addr[9:2]];
   end
 
-  // DMEM: always ready; rdata_valid fires combinatorially for loads.
-  // Gate on rst_n to avoid spurious valid assertions during reset.
+  // DMEM：始终 ready；加载时 rdata_valid 组合拉高。
+  // 使用 rst_n 门控，避免复位期间出现伪有效信号。
   always @(*) begin
     dmem_ready       = 1'b1;
-    dmem_rdata_valid = rst_n && dmem_valid & ~dmem_we; // loads only
+    dmem_rdata_valid = rst_n && dmem_valid & ~dmem_we; // 仅加载
     dmem_rdata       = ram[dmem_addr[9:2]];
   end
 
-  // RAM write: clock-edge write with byte enables
+  // RAM 写入：时钟沿写，带字节使能
   always @(posedge clk) begin
     if (dmem_valid && dmem_we) begin
       integer wi;
@@ -109,7 +110,7 @@ module tb_rv32;
   end
 
   // ----------------------------
-  // Program load & simulation control
+  // 程序加载与仿真控制
   // ----------------------------
   reg [1023:0] hex_path;
 
@@ -119,7 +120,7 @@ module tb_rv32;
       ram[i] = 32'h0;
     end
 
-    // Load hex from +hex= plusarg (default: tests/addi.hex for manual runs)
+    // 从 +hex= 参数加载 hex（默认 tests/addi.hex，便于手工运行）
     if (!$value$plusargs("hex=%s", hex_path)) begin
       hex_path = "tests/addi.hex";
     end
@@ -127,12 +128,12 @@ module tb_rv32;
     $display("[TB] loading program: %0s", hex_path);
     $readmemh(hex_path, rom);
 
-    // Reset sequence
+    // 复位序列
     rst_n = 1'b0;
     repeat (5) @(posedge clk);
     rst_n = 1'b1;
 
-    // Run up to 5000 cycles; check PASS/FAIL marker at ram[1]
+    // 最多运行 5000 周期；检查 ram[1] 中的 PASS/FAIL 标记
     repeat (5000) begin
       @(posedge clk);
       if (ram[1] == 32'h1) begin

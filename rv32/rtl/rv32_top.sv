@@ -3,30 +3,30 @@
 // ============================================================
 // rv32_top
 // ------------------------------------------------------------
-// Wrapper module: instantiates rv32_core and exposes all
-// instruction/data memory ports (including ready/valid signals)
-// to the testbench or SoC integration layer.
+// 顶层封装模块：实例化 rv32_core，并将全部
+// 指令/数据存储器端口（含 ready/valid 信号）
+// 暴露给测试平台或 SoC 集成层。
 // ============================================================
 module rv32_top (
   input  wire        clk,
   input  wire        rst_n,
 
-  // Instruction memory port
-  output wire        imem_valid,        // core requesting instruction
-  output wire [31:0] imem_addr,         // fetch address (byte address)
-  input  wire        imem_ready,        // memory accepts request
-  input  wire        imem_rdata_valid,  // instruction data valid
-  input  wire [31:0] imem_rdata,        // instruction word
+  // 指令存储器端口
+  output wire        imem_valid,        // 内核请求取指
+  output wire [31:0] imem_addr,         // 取指地址（字节地址）
+  input  wire        imem_ready,        // 存储器接受请求
+  input  wire        imem_rdata_valid,  // 指令数据有效
+  input  wire [31:0] imem_rdata,        // 指令字
 
-  // Data memory port
-  output wire        dmem_valid,        // core requesting data access
-  output wire        dmem_we,           // 1=store, 0=load
-  output wire [3:0]  dmem_wstrb,        // byte enables (little-endian)
-  output wire [31:0] dmem_addr,         // data address (byte address)
-  output wire [31:0] dmem_wdata,        // write data
-  input  wire        dmem_ready,        // memory accepts request
-  input  wire        dmem_rdata_valid,  // read data valid (loads)
-  input  wire [31:0] dmem_rdata         // read data
+  // 数据存储器端口
+  output wire        dmem_valid,        // 内核请求数据访问
+  output wire        dmem_we,           // 1=写存储，0=读加载
+  output wire [3:0]  dmem_wstrb,        // 字节写使能（小端）
+  output wire [31:0] dmem_addr,         // 数据地址（字节地址）
+  output wire [31:0] dmem_wdata,        // 写数据
+  input  wire        dmem_ready,        // 存储器接受请求
+  input  wire        dmem_rdata_valid,  // 读数据有效（加载）
+  input  wire [31:0] dmem_rdata         // 读数据
 );
 
   rv32_core u_core (
