@@ -1,0 +1,146 @@
+#-----------------------------------------------------------
+# Vivado v2018.3 (64-bit)
+# SW Build 2405991 on Thu Dec  6 23:38:27 MST 2018
+# IP Build 2404404 on Fri Dec  7 01:43:56 MST 2018
+# Start of session at: Mon Apr 13 20:59:28 2026
+# Process ID: 17844
+# Current directory: C:/Users/37664/Desktop/code/VerilogProjects
+# Command line: vivado.exe vivado_project/rv32_sim.xpr
+# Log file: C:/Users/37664/Desktop/code/VerilogProjects/vivado.log
+# Journal file: C:/Users/37664/Desktop/code/VerilogProjects\vivado.jou
+#-----------------------------------------------------------
+start_gui
+open_project vivado_project/rv32_sim.xpr
+Scanning sources...
+Finished scanning sources
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'E:/dayingyonganzhuang/Vivado/2018.3/data/ip'.
+update_compile_order -fileset sources_1
+reset_run synth_1
+launch_runs synth_1 -jobs 16
+[Mon Apr 13 21:00:05 2026] Launched synth_1...
+Run output will be captured here: C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.runs/synth_1/runme.log
+launch_runs impl_1 -jobs 16
+[Mon Apr 13 21:00:46 2026] Launched impl_1...
+Run output will be captured here: C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.runs/impl_1/runme.log
+launch_runs impl_1 -to_step write_bitstream -jobs 16
+[Mon Apr 13 21:01:54 2026] Launched impl_1...
+Run output will be captured here: C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.runs/impl_1/runme.log
+open_run impl_1
+INFO: [Netlist 29-17] Analyzing 87 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+INFO: [Project 1-479] Netlist was created with Vivado 2018.3
+INFO: [Device 21-403] Loading part xc7z020clg484-1
+INFO: [Project 1-570] Preparing netlist for logic optimization
+Reading XDEF placement.
+Reading placer database...
+Reading XDEF routing.
+Read XDEF File: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.096 . Memory (MB): peak = 1223.293 ; gain = 2.344
+Restored from archive | CPU: 0.000000 secs | Memory: 0.000000 MB |
+Finished XDEF File Restore: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.096 . Memory (MB): peak = 1223.293 ; gain = 2.344
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 1223.348 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+  A total of 12 instances were transformed.
+  RAM32M => RAM32M (RAMD32, RAMD32, RAMD32, RAMD32, RAMD32, RAMD32, RAMS32, RAMS32): 12 instances
+
+open_run: Time (s): cpu = 00:00:13 ; elapsed = 00:00:07 . Memory (MB): peak = 1469.449 ; gain = 448.469
+WARNING: [Timing 38-313] There are no user specified timing constraints. Timing constraints are needed for proper timing analysis.
+reset_run synth_1
+launch_runs synth_1 -jobs 16
+[Mon Apr 13 21:04:39 2026] Launched synth_1...
+Run output will be captured here: C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.runs/synth_1/runme.log
+launch_runs impl_1 -jobs 16
+[Mon Apr 13 21:05:02 2026] Launched impl_1...
+Run output will be captured here: C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.runs/impl_1/runme.log
+launch_simulation
+INFO: [Vivado 12-5682] Launching behavioral simulation in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
+INFO: [SIM-utils-51] Simulation object is 'sim_1'
+INFO: [SIM-utils-54] Inspecting design source files for 'tb_rv32' in fileset 'sim_1'...
+INFO: [USF-XSim-97] Finding global include files...
+INFO: [USF-XSim-98] Fetching design files from 'sim_1'...
+INFO: [USF-XSim-2] XSim::Compile design
+INFO: [USF-XSim-61] Executing 'COMPILE and ANALYZE' step in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
+"xvlog --incr --relax -prj tb_rv32_vlog.prj"
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_alu.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_alu
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_branch.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_branch
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_core
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_decode.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_decode
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_imm.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_imm
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_regfile.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_regfile
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_top.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_top
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module tb_rv32
+INFO: [VRFC 10-2263] Analyzing Verilog file "C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim/glbl.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module glbl
+INFO: [USF-XSim-69] 'compile' step finished in '2' seconds
+INFO: [USF-XSim-3] XSim::Elaborate design
+INFO: [USF-XSim-61] Executing 'ELABORATE' step in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
+Vivado Simulator 2018.3
+Copyright 1986-1999, 2001-2018 Xilinx, Inc. All Rights Reserved.
+Running: E:/dayingyonganzhuang/Vivado/2018.3/bin/unwrapped/win64.o/xelab.exe -wto 43bf95b11fd54934986ec34ecacdbebb --incr --debug typical --relax --mt 2 -L xil_defaultlib -L unisims_ver -L unimacro_ver -L secureip --snapshot tb_rv32_behav xil_defaultlib.tb_rv32 xil_defaultlib.glbl -log elaborate.log 
+Using 2 slave threads.
+Starting static elaboration
+Completed static elaboration
+Starting simulation data flow analysis
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv" Line 24. Module rv32_core doesn't have a timescale but at least one module in design has a timescale.
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_decode.sv" Line 15. Module rv32_decode doesn't have a timescale but at least one module in design has a timescale.
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_imm.sv" Line 15. Module rv32_imm doesn't have a timescale but at least one module in design has a timescale.
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_regfile.sv" Line 12. Module rv32_regfile doesn't have a timescale but at least one module in design has a timescale.
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_alu.sv" Line 13. Module rv32_alu doesn't have a timescale but at least one module in design has a timescale.
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_branch.sv" Line 14. Module rv32_branch doesn't have a timescale but at least one module in design has a timescale.
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling package xil_defaultlib.$unit_rv32_alu_sv
+Compiling module xil_defaultlib.rv32_decode
+Compiling module xil_defaultlib.rv32_imm
+Compiling module xil_defaultlib.rv32_regfile
+Compiling module xil_defaultlib.rv32_alu
+Compiling module xil_defaultlib.rv32_branch
+Compiling module xil_defaultlib.rv32_core
+Compiling module xil_defaultlib.rv32_top
+Compiling module xil_defaultlib.tb_rv32
+Compiling module xil_defaultlib.glbl
+Built simulation snapshot tb_rv32_behav
+
+****** Webtalk v2018.3 (64-bit)
+  **** SW Build 2405991 on Thu Dec  6 23:38:27 MST 2018
+  **** IP Build 2404404 on Fri Dec  7 01:43:56 MST 2018
+    ** Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
+
+source C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim/xsim.dir/tb_rv32_behav/webtalk/xsim_webtalk.tcl -notrace
+INFO: [Common 17-206] Exiting Webtalk at Mon Apr 13 21:12:46 2026...
+run_program: Time (s): cpu = 00:00:00 ; elapsed = 00:00:08 . Memory (MB): peak = 2077.922 ; gain = 0.000
+INFO: [USF-XSim-69] 'elaborate' step finished in '7' seconds
+INFO: [USF-XSim-4] XSim::Simulate design
+INFO: [USF-XSim-61] Executing 'SIMULATE' step in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
+INFO: [USF-XSim-98] *** Running xsim
+   with args "tb_rv32_behav -key {Behavioral:sim_1:Functional:tb_rv32} -tclbatch {tb_rv32.tcl} -log {simulate.log}"
+INFO: [USF-XSim-8] Loading simulator feature
+Vivado Simulator 2018.3
+Time resolution is 1 ps
+source tb_rv32.tcl
+# set curr_wave [current_wave_config]
+# if { [string length $curr_wave] == 0 } {
+#   if { [llength [get_objects]] > 0} {
+#     add_wave /
+#     set_property needs_save false [current_wave_config]
+#   } else {
+#      send_msg_id Add_Wave-1 WARNING "No top level signals found. Simulator will start without a wave window. If you want to open a wave window go to 'File->New Waveform Configuration' or type 'create_wave_config' in the TCL console."
+#   }
+# }
+# run 1000ns
+[TB] loading program: tests/addi.hex
+WARNING: File tests/addi.hex referenced on C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv at line 128 cannot be opened for reading. Please ensure that this file is available in the current working directory.
+ERROR: Could not open VCD file sim/tb_rv32.vcd for writing.
+INFO: [USF-XSim-96] XSim completed. Design snapshot 'tb_rv32_behav' loaded.
+INFO: [USF-XSim-97] XSim simulation ran for 1000ns
+launch_simulation: Time (s): cpu = 00:00:04 ; elapsed = 00:00:14 . Memory (MB): peak = 2095.848 ; gain = 20.055
+create_wave_config; add_wave /; set_property needs_save false [current_wave_config]

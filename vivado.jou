@@ -2,8 +2,8 @@
 # Vivado v2018.3 (64-bit)
 # SW Build 2405991 on Thu Dec  6 23:38:27 MST 2018
 # IP Build 2404404 on Fri Dec  7 01:43:56 MST 2018
-# Start of session at: Mon Apr 13 20:59:28 2026
-# Process ID: 17844
+# Start of session at: Tue Apr 14 20:45:48 2026
+# Process ID: 3260
 # Current directory: C:/Users/37664/Desktop/code/VerilogProjects
 # Command line: vivado.exe vivado_project/rv32_sim.xpr
 # Log file: C:/Users/37664/Desktop/code/VerilogProjects/vivado.log
@@ -12,19 +12,8 @@
 start_gui
 open_project vivado_project/rv32_sim.xpr
 update_compile_order -fileset sources_1
-reset_run synth_1
-launch_runs synth_1 -jobs 16
-wait_on_run synth_1
-launch_runs impl_1 -jobs 16
-wait_on_run impl_1
-launch_runs impl_1 -to_step write_bitstream -jobs 16
-wait_on_run impl_1
-open_run impl_1
-reset_run synth_1
-launch_runs synth_1 -jobs 16
-wait_on_run synth_1
-launch_runs impl_1 -jobs 16
-wait_on_run impl_1
 launch_simulation
-source tb_rv32.tcl
-create_wave_config; add_wave /; set_property needs_save false [current_wave_config]
+source tb_rv32_wave.tcl
+move_files -fileset sim_1 [get_files  C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv]
+update_compile_order -fileset sources_1
+update_compile_order -fileset sim_1

@@ -1,7 +1,7 @@
 param (
     [string]$Project = '',
     [string]$Hex,
-    [string]$Tb = 'tb/tb_rv32.v',
+    [string]$Tb = 'tb/tb_rv32.sv',
     [switch]$Clean,
     [switch]$NoWaveform
 )
@@ -17,7 +17,7 @@ if ($Clean) {
 }
 
 # Compile the design - collect all RTL files and testbench
-$rtlFiles = @(Get-ChildItem 'rtl\*.v' -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+$rtlFiles = @(Get-ChildItem 'rtl\*.sv' -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
 $allFiles = $rtlFiles + @($Tb)
 
 # Build the iverilog command with proper escaping
