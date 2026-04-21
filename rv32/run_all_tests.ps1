@@ -34,12 +34,12 @@ $TestsDir = "tests"
 if (!(Test-Path $SimDir)) { New-Item -ItemType Directory -Path $SimDir | Out-Null }
 
 Write-Host "=============================================="
-Write-Host " RV32I Instruction Unit Test Suite"
+Write-Host " RV32I Core Regression Suite"
 Write-Host "=============================================="
 Write-Host ""
 
 # ---- Generate tests ----
-Write-Host "[INFO] Regenerating pipeline-safe test hex files..."
+Write-Host "[INFO] Regenerating instruction and hazard test hex files..."
 if (Get-Command py -ErrorAction SilentlyContinue) {
     & py -3 gen_tests.py
 } else {
@@ -55,12 +55,12 @@ Write-Host ""
 # ---- Compile ----
 Write-Host "[INFO] Compiling testbench..."
 
-# -g2012: 允许 SystemVerilog 语法（本工程 .v 文件里用到了 always_comb/always_ff 等）
-# -I rtl : 让 `include "rv32_pkg.vh"` 能找到头文件
-# 这里把 rtl 下所有 .v 都喂给 iverilog，再加上 tb\tb_rv32.v
+# -g2012: 允许 SystemVerilog 语法（本工程使用 .sv/.svh）
+# -I rtl : 让 `include "rv32_pkg.svh"` 能找到头文件
+# 这里把 rtl 下所有 .sv 都喂给 iverilog，再加上 tb\tb_rv32.sv
 $ivArgs = @("-g2012", "-o", $VvpFile, "-I", "rtl") +
-          (Get-ChildItem rtl\*.v | ForEach-Object { $_.FullName }) +
-          @("tb\tb_rv32.v")
+          (Get-ChildItem rtl\*.sv | ForEach-Object { $_.FullName }) +
+          @("tb\tb_rv32.sv")
 if (Test-Path $VvpFile) { Remove-Item $VvpFile -Force }
 & iverilog @ivArgs
 if ($LASTEXITCODE -ne 0) {

@@ -33,12 +33,12 @@ TESTS_DIR="tests"
 mkdir -p "$SIM_DIR"
 
 echo "=============================================="
-echo " RV32I Instruction Unit Test Suite"
+echo " RV32I Core Regression Suite"
 echo "=============================================="
 echo ""
 
 # ---- Generate tests ----
-echo "[INFO] Regenerating pipeline-safe test hex files..."
+echo "[INFO] Regenerating instruction and hazard test hex files..."
 python3 gen_tests.py
 echo "[INFO] Test generation OK"
 echo ""
@@ -46,10 +46,10 @@ echo ""
 # ---- Compile ----
 echo "[INFO] Compiling testbench..."
 
-# -g2012: 允许 SystemVerilog 语法（本工程 .v 文件里用到了 always_comb/always_ff 等）
-# -I rtl : 让 `include "rv32_pkg.vh"` 能找到头文件
+# -g2012: 允许 SystemVerilog 语法（本工程使用 .sv/.svh）
+# -I rtl : 让 `include "rv32_pkg.svh"` 能找到头文件
 rm -f "$VVP"
-if ! iverilog -g2012 -o "$VVP" -I rtl rtl/*.v tb/tb_rv32.v; then
+if ! iverilog -g2012 -o "$VVP" -I rtl rtl/*.sv tb/tb_rv32.sv; then
     echo "[ERROR] Compilation failed – aborting."
     exit 1
 fi

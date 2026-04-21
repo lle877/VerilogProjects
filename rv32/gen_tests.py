@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成 RV32I 37 条指令的单元测试 hex 文件（教学脚本）。
+"""生成 RV32I 37 条指令测试与 hazard 回归 hex 文件（教学脚本）。
 
 输出位置:
     - 默认写入本文件同级目录下的 tests/*.hex
@@ -118,10 +118,9 @@ def OR(rd, rs1, rs2):            return r_type(0b0000000, rs2, rs1, 0b110, rd, O
 def AND_R(rd, rs1, rs2):         return r_type(0b0000000, rs2, rs1, 0b111, rd, OPC_OP)
 
 # ---------- 五级流水线辅助 ----------
-# 当前 core 是 5-stage pipeline，且“不处理冒险”。
-# 因此测试程序里需要同时处理两类软件插槽：
-#   1) 数据相关：在“写寄存器 -> 下一条读该寄存器”之间插入 NOP
-#   2) 控制相关：在可能改变 PC 的分支/跳转之后插入 NOP
+# 标准 37 条 RV32I 指令测试仍保留显式 NOP，便于与旧版核心、
+# 波形截图和文档对照；额外的 hazard_*.hex 会直接验证前递、
+# load-use stall 与控制冲刷，不再依赖软件插槽。
 PIPELINE_GAP = 3
 CONTROL_GAP = 2
 
@@ -190,6 +189,13 @@ def select_by_bne(result_reg, expected_reg, success_seq, fail_seq_):
     fail = list(fail_seq_)
     bne_to_fail = 4 * (1 + CONTROL_GAP + len(success))
     return [BNE(result_reg, expected_reg, bne_to_fail), *ctrl_gap()] + success + fail
+
+def check_equal_no_delay(result_reg, expected_reg, success_seq=None, fail_seq_=None):
+    """Branch to fail-path on mismatch, without any software-inserted delay slots."""
+    success = pass_seq() if success_seq is None else list(success_seq)
+    fail = fail_seq() if fail_seq_ is None else list(fail_seq_)
+    bne_to_fail = 4 * (1 + len(success))
+    return [BNE(result_reg, expected_reg, bne_to_fail)] + success + fail
 
 def alu_test(setup_instrs, result_reg, expected_reg, success_seq=None, fail_seq_=None):
     """Build a pipeline-safe ALU-style test program."""
@@ -280,9 +286,13 @@ def static_branch_case(setup1, setup2, branch_instr_fn):
         branch_test(setup1, setup2, branch_instr_fn, success_seq, fail_seq_)
 
 TEST_CASES = []
+HAZARD_CASES = []
 
 def register_case(name, builder):
     TEST_CASES.append((name, builder))
+
+def register_hazard_case(name, builder):
+    HAZARD_CASES.append((name, builder))
 
 # =============================================
 # 注册测试程序（每个指令 1 个 .hex）
@@ -591,6 +601,81 @@ register_case('and', static_alu_case(
     result_reg=3, expected_reg=4
 ))
 
+def hazard_forward_case():
+    return [
+        ADDI(1, 0, 5),
+        ADDI(2, 0, 7),
+        ADD(3, 1, 2),
+        ADDI(4, 3, 9),
+        SW(4, 0, 8),
+        LW(5, 0, 8),
+        ADDI(6, 0, 21),
+    ] + check_equal_no_delay(5, 6)
+
+def hazard_load_use_case():
+    return [
+        ADDI(1, 0, 42),
+        SW(1, 0, 8),
+        LW(2, 0, 8),
+        ADDI(3, 2, 1),
+        ADDI(4, 0, 43),
+    ] + check_equal_no_delay(3, 4)
+
+def hazard_control_case():
+    success = pass_seq(7)
+    fail = fail_seq(7)
+    wrong_path = [
+        JAL_I(0, 4 * (1 + len(success))),
+        NOP(),
+    ]
+    return [
+        ADDI(1, 0, 1),
+        ADDI(2, 0, 1),
+        BEQ(1, 2, 4 * (1 + len(wrong_path))),
+    ] + wrong_path + success + fail
+
+def hazard_wb_id_case():
+    return [
+        ADDI(1, 0, 7),
+        ADDI(2, 0, 1),
+        ADDI(3, 0, 2),
+        ADDI(4, 1, 5),
+        ADDI(5, 0, 12),
+    ] + check_equal_no_delay(4, 5)
+
+def hazard_jalr_case():
+    success = pass_seq(7)
+    fail = fail_seq(7)
+    return [
+        ADDI(1, 0, 16),
+        JALR_I(2, 1, 0),
+        JAL_I(0, 4 * (3 + len(success))),
+        NOP(),
+        ADDI(3, 0, 8),
+        BNE(2, 3, 4 * (1 + len(success))),
+    ] + success + fail
+
+def hazard_load_branch_case():
+    success = pass_seq(8)
+    fail = fail_seq(8)
+    wrong_path = [
+        JAL_I(0, 4 * (1 + len(success))),
+        NOP(),
+    ]
+    return [
+        ADDI(1, 0, 1),
+        SW(1, 0, 8),
+        LW(2, 0, 8),
+        BEQ(2, 1, 4 * (1 + len(wrong_path))),
+    ] + wrong_path + success + fail
+
+register_hazard_case('hazard_forward', hazard_forward_case)
+register_hazard_case('hazard_load_use', hazard_load_use_case)
+register_hazard_case('hazard_control', hazard_control_case)
+register_hazard_case('hazard_wb_id', hazard_wb_id_case)
+register_hazard_case('hazard_jalr', hazard_jalr_case)
+register_hazard_case('hazard_load_branch', hazard_load_branch_case)
+
 def build_wave_program():
     prog = []
     total = len(TEST_CASES)
@@ -605,6 +690,9 @@ def build_wave_program():
 for name, builder in TEST_CASES:
     write_hex(f'{OUT}/{name}.hex', builder(0, pass_seq(), fail_seq()))
 
+for name, builder in HAZARD_CASES:
+    write_hex(f'{OUT}/{name}.hex', builder())
+
 wave_prog = build_wave_program()
 write_wave_rom_init(WAVE_ROM_INCLUDE, wave_prog)
 
@@ -614,5 +702,6 @@ files = sorted(glob.glob(f'{OUT}/*.hex'))
 print(f'Total files: {len(files)}')
 for f in files:
     print(f'  {os.path.basename(f)}')
+print(f'Hazard regression files: {len(HAZARD_CASES)}')
 print('Generated waveform ROM include:', WAVE_ROM_INCLUDE)
 print('Waveform ROM words:', len(wave_prog))

@@ -5,11 +5,10 @@
 // ------------------------------------------------------------
 // 架构说明：
 //   - 五级流水线，包含 IF/ID、ID/EX、EX/MEM、MEM/WB 级间寄存器。
-//   - 当前版本不处理冒险：不做 forwarding、不做 load-use stall、
-//     不做分支 flush，也不处理存储器等待周期。
-//   - 分支/跳转仍在 EX 级计算目标 PC，但软件需自行提供控制延迟槽。
-//   - 程序需在寄存器写回与下一次使用之间插入 >= 3 条 NOP。
-//   - 程序需在可能改变 PC 的分支/跳转后插入 >= 2 条 NOP。
+//   - 通过 EX/MEM、MEM/WB 前递处理常见 RAW 数据冒险。
+//   - 对 load-use 冒险自动插入 1 个气泡。
+//   - 对被采纳的分支/JAL/JALR 自动冲刷 IF/ID 与 ID/EX。
+//   - 仍假定指令/数据存储器为零等待，不处理 ready/valid 停顿。
 //
 // 存储器接口约定：
 //   - 端口形式仍保留 ready/valid 信号，便于后续扩展。
@@ -101,6 +100,8 @@ module rv32_core (
   logic [4:0]  id_rd, id_rs1, id_rs2;
   logic [31:0] id_imm_i, id_imm_s, id_imm_b, id_imm_u, id_imm_j;
   logic [31:0] id_rs1_val, id_rs2_val;
+  logic        id_uses_rs1, id_uses_rs2;
+  logic        load_use_hazard;
   // ID 控制信号
   logic        id_rf_we;
   logic [1:0]  id_wb_sel;
@@ -115,6 +116,7 @@ module rv32_core (
   // ID/EX 流水寄存器
   // -----------------------------------------------------------
   logic [31:0] idex_pc;
+  logic [4:0]  idex_rs1, idex_rs2;
   logic [31:0] idex_rs1_val, idex_rs2_val;
   logic [4:0]  idex_rd;
   logic [31:0] idex_imm_i, idex_imm_s, idex_imm_b, idex_imm_u, idex_imm_j;
@@ -133,6 +135,7 @@ module rv32_core (
   // -----------------------------------------------------------
   // EX 级信号（由 ID/EX 寄存器组合产生）
   // -----------------------------------------------------------
+  logic [31:0] ex_rs1_val, ex_rs2_val;
   logic [31:0] ex_alu_a, ex_alu_b, ex_alu_y;
   logic        ex_br_take;
   logic [31:0] ex_pc4, ex_branch_target, ex_jal_target, ex_jalr_target;
@@ -222,8 +225,8 @@ module rv32_core (
   // 分支比较器（EX 级）
   rv32_branch u_br (
     .funct3 (idex_funct3),
-    .rs1    (idex_rs1_val),
-    .rs2    (idex_rs2_val),
+    .rs1    (ex_rs1_val),
+    .rs2    (ex_rs2_val),
     .take   (ex_br_take)
   );
 
@@ -248,9 +251,9 @@ module rv32_core (
   // PC 寄存器
   // ===========================================================
   always_ff @(posedge clk) begin
-    if (!rst_n)            pc_q <= 32'h0000_0000;
+    if (!rst_n)             pc_q <= 32'h0000_0000;
     else if (ex_pc_redirect) pc_q <= ex_pc_target;  // 分支/跳转被采纳时重定向
-    else                    pc_q <= pc_q + 32'd4;   // 正常顺序前进
+    else if (!load_use_hazard) pc_q <= pc_q + 32'd4; // load-use 时冻结 PC
   end
 
   // ===========================================================
@@ -261,7 +264,11 @@ module rv32_core (
       ifid_pc    <= 32'h0;
       ifid_instr <= 32'h0000_0013; // NOP（addi x0,x0,0）
       ifid_valid <= 1'b0;
-    end else begin
+    end else if (ex_pc_redirect) begin
+      ifid_pc    <= 32'h0;
+      ifid_instr <= 32'h0000_0013;
+      ifid_valid <= 1'b0;
+    end else if (!load_use_hazard) begin
       ifid_pc    <= pc_q;
       ifid_instr <= imem_rdata;
       ifid_valid <= 1'b1;
@@ -273,6 +280,8 @@ module rv32_core (
   // ===========================================================
   always_comb begin
     // 默认值 = NOP：无写回、无访存、PC+4、ADD
+    id_uses_rs1      = 1'b0;
+    id_uses_rs2      = 1'b0;
     id_rf_we         = 1'b0;
     id_wb_sel        = WB_SRC_ALU;
     id_alu_src_a_sel = ALU_SRC_A_RS1;
@@ -304,6 +313,7 @@ module rv32_core (
         end
 
         OPC_JALR: begin
+          id_uses_rs1      = 1'b1;
           id_rf_we         = 1'b1;
           id_wb_sel        = WB_SRC_PC4;
           id_alu_src_a_sel = ALU_SRC_A_RS1;
@@ -312,12 +322,15 @@ module rv32_core (
         end
 
         OPC_BRANCH: begin
+          id_uses_rs1 = 1'b1;
+          id_uses_rs2 = 1'b1;
           // 实际的取分支/不取分支在 EX 级判定；
           // 传递 PC_SRC_BRANCH 让 EX 知道需要判断条件。
           id_pc_sel = PC_SRC_BRANCH;
         end
 
         OPC_OPIMM: begin
+          id_uses_rs1      = 1'b1;
           id_rf_we         = 1'b1;
           id_wb_sel        = WB_SRC_ALU;
           id_alu_src_a_sel = ALU_SRC_A_RS1;
@@ -336,6 +349,8 @@ module rv32_core (
         end
 
         OPC_OP: begin
+          id_uses_rs1      = 1'b1;
+          id_uses_rs2      = 1'b1;
           id_rf_we         = 1'b1;
           id_wb_sel        = WB_SRC_ALU;
           id_alu_src_a_sel = ALU_SRC_A_RS1;
@@ -354,6 +369,7 @@ module rv32_core (
         end
 
         OPC_LOAD: begin
+          id_uses_rs1      = 1'b1;
           id_rf_we         = 1'b1;
           id_wb_sel        = WB_SRC_MEM;
           id_alu_src_a_sel = ALU_SRC_A_RS1;
@@ -368,6 +384,8 @@ module rv32_core (
         end
 
         OPC_STORE: begin
+          id_uses_rs1      = 1'b1;
+          id_uses_rs2      = 1'b1;
           id_alu_src_a_sel = ALU_SRC_A_RS1;
           id_alu_src_b_sel = ALU_SRC_B_IMM_S;
           id_alu_op        = ALU_ADD;
@@ -384,6 +402,11 @@ module rv32_core (
     end
   end
 
+  assign load_use_hazard = ifid_valid && idex_valid && idex_rf_we &&
+                           (idex_wb_sel == WB_SRC_MEM) && (idex_rd != 5'h0) &&
+                           ((id_uses_rs1 && (id_rs1 == idex_rd)) ||
+                            (id_uses_rs2 && (id_rs2 == idex_rd)));
+
   // ===========================================================
   // ID/EX 流水寄存器
   // ===========================================================
@@ -392,6 +415,30 @@ module rv32_core (
       // 复位：插入 NOP 气泡
       idex_valid         <= 1'b0;
       idex_pc            <= 32'h0;
+      idex_rs1           <= 5'h0;
+      idex_rs2           <= 5'h0;
+      idex_rs1_val       <= 32'h0;
+      idex_rs2_val       <= 32'h0;
+      idex_rd            <= 5'h0;
+      idex_funct3        <= 3'h0;
+      idex_imm_i         <= 32'h0;
+      idex_imm_s         <= 32'h0;
+      idex_imm_b         <= 32'h0;
+      idex_imm_u         <= 32'h0;
+      idex_imm_j         <= 32'h0;
+      idex_rf_we         <= 1'b0;
+      idex_wb_sel        <= WB_SRC_ALU;
+      idex_alu_src_a_sel <= ALU_SRC_A_RS1;
+      idex_alu_src_b_sel <= ALU_SRC_B_RS2;
+      idex_alu_op        <= ALU_ADD;
+      idex_pc_sel        <= PC_SRC_PC4;
+      idex_mem_req       <= 1'b0;
+      idex_mem_write     <= 1'b0;
+    end else if (ex_pc_redirect || load_use_hazard) begin
+      idex_valid         <= 1'b0;
+      idex_pc            <= 32'h0;
+      idex_rs1           <= 5'h0;
+      idex_rs2           <= 5'h0;
       idex_rs1_val       <= 32'h0;
       idex_rs2_val       <= 32'h0;
       idex_rd            <= 5'h0;
@@ -412,6 +459,8 @@ module rv32_core (
     end else begin
       idex_valid         <= ifid_valid;
       idex_pc            <= ifid_pc;
+      idex_rs1           <= id_rs1;
+      idex_rs2           <= id_rs2;
       idex_rs1_val       <= id_rs1_val;
       idex_rs2_val       <= id_rs2_val;
       idex_rd            <= id_rd;
@@ -436,6 +485,27 @@ module rv32_core (
   // EX 级
   // ===========================================================
 
+  // 对 ALU、分支比较、JALR 基址和 store 数据统一做前递选择。
+  always_comb begin
+    ex_rs1_val = idex_rs1_val;
+    if (exmem_valid && exmem_rf_we && (exmem_rd != 5'h0) &&
+        (exmem_rd == idex_rs1) && (exmem_wb_sel != WB_SRC_MEM)) begin
+      ex_rs1_val = exmem_wb_data;
+    end else if (memwb_valid && memwb_rf_we && (memwb_rd != 5'h0) &&
+                 (memwb_rd == idex_rs1)) begin
+      ex_rs1_val = memwb_wdata;
+    end
+
+    ex_rs2_val = idex_rs2_val;
+    if (exmem_valid && exmem_rf_we && (exmem_rd != 5'h0) &&
+        (exmem_rd == idex_rs2) && (exmem_wb_sel != WB_SRC_MEM)) begin
+      ex_rs2_val = exmem_wb_data;
+    end else if (memwb_valid && memwb_rf_we && (memwb_rd != 5'h0) &&
+                 (memwb_rd == idex_rs2)) begin
+      ex_rs2_val = memwb_wdata;
+    end
+  end
+
   // PC 目标候选
   assign ex_pc4           = idex_pc + 32'd4;
   assign ex_branch_target = idex_pc + idex_imm_b;
@@ -443,15 +513,15 @@ module rv32_core (
   assign ex_jalr_target   = {ex_alu_y[31:1], 1'b0}; // (rs1+imm_i) & ~1
 
   // ALU 操作数多路选择
-  assign ex_alu_a = (idex_alu_src_a_sel == ALU_SRC_A_PC) ? idex_pc : idex_rs1_val;
+  assign ex_alu_a = (idex_alu_src_a_sel == ALU_SRC_A_PC) ? idex_pc : ex_rs1_val;
 
   always_comb begin
     unique case (idex_alu_src_b_sel)
-      ALU_SRC_B_RS2:   ex_alu_b = idex_rs2_val;
+      ALU_SRC_B_RS2:   ex_alu_b = ex_rs2_val;
       ALU_SRC_B_IMM_I: ex_alu_b = idex_imm_i;
       ALU_SRC_B_IMM_S: ex_alu_b = idex_imm_s;
       ALU_SRC_B_IMM_U: ex_alu_b = idex_imm_u;
-      default:         ex_alu_b = idex_rs2_val;
+      default:         ex_alu_b = ex_rs2_val;
     endcase
   end
 
@@ -500,25 +570,25 @@ module rv32_core (
       case (idex_funct3)
         3'b000: begin // SB
           case (ex_alu_y[1:0])
-            2'd0: begin ex_store_wstrb = 4'b0001; ex_store_wdata = {24'h0, idex_rs2_val[7:0]}; end
-            2'd1: begin ex_store_wstrb = 4'b0010; ex_store_wdata = {16'h0, idex_rs2_val[7:0], 8'h0}; end
-            2'd2: begin ex_store_wstrb = 4'b0100; ex_store_wdata = {8'h0, idex_rs2_val[7:0], 16'h0}; end
-            2'd3: begin ex_store_wstrb = 4'b1000; ex_store_wdata = {idex_rs2_val[7:0], 24'h0}; end
+            2'd0: begin ex_store_wstrb = 4'b0001; ex_store_wdata = {24'h0, ex_rs2_val[7:0]}; end
+            2'd1: begin ex_store_wstrb = 4'b0010; ex_store_wdata = {16'h0, ex_rs2_val[7:0], 8'h0}; end
+            2'd2: begin ex_store_wstrb = 4'b0100; ex_store_wdata = {8'h0, ex_rs2_val[7:0], 16'h0}; end
+            2'd3: begin ex_store_wstrb = 4'b1000; ex_store_wdata = {ex_rs2_val[7:0], 24'h0}; end
             default: begin ex_store_wstrb = 4'b0; ex_store_wdata = 32'h0; end
           endcase
         end
         3'b001: begin // SH
           if (!ex_alu_y[1]) begin
             ex_store_wstrb = 4'b0011;
-            ex_store_wdata = {16'h0, idex_rs2_val[15:0]};
+            ex_store_wdata = {16'h0, ex_rs2_val[15:0]};
           end else begin
             ex_store_wstrb = 4'b1100;
-            ex_store_wdata = {idex_rs2_val[15:0], 16'h0};
+            ex_store_wdata = {ex_rs2_val[15:0], 16'h0};
           end
         end
         3'b010: begin // SW
           ex_store_wstrb = 4'b1111;
-          ex_store_wdata = idex_rs2_val;
+          ex_store_wdata = ex_rs2_val;
         end
         default: begin ex_store_wstrb = 4'b0; ex_store_wdata = 32'h0; end
       endcase

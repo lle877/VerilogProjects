@@ -3,7 +3,7 @@
 // ------------------------------------------------------------
 // 功能:
 //   RV32I 32x32 寄存器堆（x0~x31）。
-//   - 2 读端口：组合读（异步读）
+//   - 2 读端口：组合读（异步读），并带同周期写后读旁路
 //   - 1 写端口：时钟上升沿写入
 //
 // 关键规则:
@@ -24,8 +24,21 @@ module rv32_regfile (
 
   // 读端口：组合读（注意：x0 强制为 0）
   always_comb begin
-    rdata1 = (raddr1 == 0) ? 32'h0 : regs[raddr1]; // rs1
-    rdata2 = (raddr2 == 0) ? 32'h0 : regs[raddr2]; // rs2
+    if (raddr1 == 0) begin
+      rdata1 = 32'h0;
+    end else if (we && (waddr == raddr1) && (waddr != 0)) begin
+      rdata1 = wdata;
+    end else begin
+      rdata1 = regs[raddr1];
+    end
+
+    if (raddr2 == 0) begin
+      rdata2 = 32'h0;
+    end else if (we && (waddr == raddr2) && (waddr != 0)) begin
+      rdata2 = wdata;
+    end else begin
+      rdata2 = regs[raddr2];
+    end
   end
 
   // 写端口：时序写（注意：禁止写 x0）
