@@ -2,8 +2,8 @@
 # Vivado v2018.3 (64-bit)
 # SW Build 2405991 on Thu Dec  6 23:38:27 MST 2018
 # IP Build 2404404 on Fri Dec  7 01:43:56 MST 2018
-# Start of session at: Tue Apr 21 11:21:31 2026
-# Process ID: 5104
+# Start of session at: Tue Apr 14 20:45:48 2026
+# Process ID: 3260
 # Current directory: C:/Users/37664/Desktop/code/VerilogProjects
 # Command line: vivado.exe vivado_project/rv32_sim.xpr
 # Log file: C:/Users/37664/Desktop/code/VerilogProjects/vivado.log
@@ -13,11 +13,7 @@ start_gui
 open_project vivado_project/rv32_sim.xpr
 update_compile_order -fileset sources_1
 launch_simulation
-set_property is_enabled true [get_files  C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv]
-update_compile_order -fileset sim_1
-update_compile_order -fileset sim_1
-export_ip_user_files -of_objects  [get_files C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv] -no_script -reset -force -quiet
-remove_files  -fileset sim_1 C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv
-launch_simulation
 source tb_rv32_wave.tcl
-close_sim
+move_files -fileset sim_1 [get_files  C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv]
+update_compile_order -fileset sources_1
+update_compile_order -fileset sim_1

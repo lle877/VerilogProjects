@@ -1,2 +1,18 @@
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv" into library xil_defaultlib
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_alu.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_alu
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_branch.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_branch
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_core
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_decode.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_decode
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_imm.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_imm
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_regfile.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_regfile
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_top.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module rv32_top
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv" into library xil_defaultlib
 INFO: [VRFC 10-311] analyzing module tb_rv32_wave
+INFO: [VRFC 10-2263] Analyzing Verilog file "C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim/glbl.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module glbl

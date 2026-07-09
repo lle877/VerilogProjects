@@ -1,4 +1,3 @@
-Vivado Simulator 2018.3
 Time resolution is 1 ps
 [TB] FAIL: last passing test=1, ram[1]=0xdeadbeef
-$finish called at time : 325 ns : File "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv" Line 178
+$finish called at time : 325 ns : File "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv" Line 178

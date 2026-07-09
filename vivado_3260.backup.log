@@ -2,8 +2,8 @@
 # Vivado v2018.3 (64-bit)
 # SW Build 2405991 on Thu Dec  6 23:38:27 MST 2018
 # IP Build 2404404 on Fri Dec  7 01:43:56 MST 2018
-# Start of session at: Tue Apr 21 11:21:31 2026
-# Process ID: 5104
+# Start of session at: Tue Apr 14 20:45:48 2026
+# Process ID: 3260
 # Current directory: C:/Users/37664/Desktop/code/VerilogProjects
 # Command line: vivado.exe vivado_project/rv32_sim.xpr
 # Log file: C:/Users/37664/Desktop/code/VerilogProjects/vivado.log
@@ -11,33 +11,12 @@
 #-----------------------------------------------------------
 start_gui
 open_project vivado_project/rv32_sim.xpr
-CRITICAL WARNING: [Project 1-19] Could not find the file 'C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv'.
 Scanning sources...
 Finished scanning sources
 INFO: [IP_Flow 19-234] Refreshing IP repositories
 INFO: [IP_Flow 19-1704] No user IP repositories specified
 INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'E:/dayingyonganzhuang/Vivado/2018.3/data/ip'.
-open_project: Time (s): cpu = 00:00:36 ; elapsed = 00:00:20 . Memory (MB): peak = 868.742 ; gain = 163.191
 update_compile_order -fileset sources_1
-launch_simulation
-INFO: [Vivado 12-5682] Launching behavioral simulation in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
-INFO: [SIM-utils-51] Simulation object is 'sim_1'
-INFO: [SIM-utils-54] Inspecting design source files for 'rv32_top' in fileset 'sim_1'...
-INFO: [USF-XSim-97] Finding global include files...
-INFO: [USF-XSim-98] Fetching design files from 'sim_1'...
-INFO: [USF-XSim-2] XSim::Compile design
-INFO: [USF-XSim-61] Executing 'COMPILE and ANALYZE' step in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
-"xvlog --incr --relax -prj rv32_top_vlog.prj"
-INFO: [Common 17-41] Interrupt caught. Command should exit soon.
-INFO: [Common 17-344] 'run_program' was cancelled
-INFO: [Vivado 12-5357] 'compile' step aborted
-launch_simulation: Time (s): cpu = 00:00:01 ; elapsed = 00:00:05 . Memory (MB): peak = 897.078 ; gain = 0.000
-INFO: [Common 17-344] 'launch_simulation' was cancelled
-set_property is_enabled true [get_files  C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv]
-update_compile_order -fileset sim_1
-update_compile_order -fileset sim_1
-export_ip_user_files -of_objects  [get_files C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv] -no_script -reset -force -quiet
-remove_files  -fileset sim_1 C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv
 launch_simulation
 INFO: [Vivado 12-5682] Launching behavioral simulation in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
 INFO: [SIM-utils-51] Simulation object is 'sim_1'
@@ -61,9 +40,9 @@ INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/V
 INFO: [VRFC 10-311] analyzing module rv32_regfile
 INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_top.sv" into library xil_defaultlib
 INFO: [VRFC 10-311] analyzing module rv32_top
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv" into library xil_defaultlib
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv" into library xil_defaultlib
 INFO: [VRFC 10-311] analyzing module tb_rv32_wave
-INFO: [USF-XSim-69] 'compile' step finished in '4' seconds
+INFO: [USF-XSim-69] 'compile' step finished in '2' seconds
 INFO: [USF-XSim-3] XSim::Elaborate design
 INFO: [USF-XSim-61] Executing 'ELABORATE' step in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
 Vivado Simulator 2018.3
@@ -73,7 +52,7 @@ Using 2 slave threads.
 Starting static elaboration
 Completed static elaboration
 Starting simulation data flow analysis
-WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv" Line 21. Module rv32_core doesn't have a timescale but at least one module in design has a timescale.
+WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv" Line 22. Module rv32_core doesn't have a timescale but at least one module in design has a timescale.
 WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_decode.sv" Line 15. Module rv32_decode doesn't have a timescale but at least one module in design has a timescale.
 WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_imm.sv" Line 15. Module rv32_imm doesn't have a timescale but at least one module in design has a timescale.
 WARNING: [XSIM 43-4099] "C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_regfile.sv" Line 12. Module rv32_regfile doesn't have a timescale but at least one module in design has a timescale.
@@ -92,16 +71,7 @@ Compiling module xil_defaultlib.rv32_top
 Compiling module xil_defaultlib.tb_rv32_wave
 Compiling module xil_defaultlib.glbl
 Built simulation snapshot tb_rv32_wave_behav
-
-****** Webtalk v2018.3 (64-bit)
-  **** SW Build 2405991 on Thu Dec  6 23:38:27 MST 2018
-  **** IP Build 2404404 on Fri Dec  7 01:43:56 MST 2018
-    ** Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
-
-source C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim/xsim.dir/tb_rv32_wave_behav/webtalk/xsim_webtalk.tcl -notrace
-INFO: [Common 17-206] Exiting Webtalk at Tue Apr 21 11:24:11 2026...
-run_program: Time (s): cpu = 00:00:01 ; elapsed = 00:00:15 . Memory (MB): peak = 909.844 ; gain = 0.000
-INFO: [USF-XSim-69] 'elaborate' step finished in '15' seconds
+INFO: [USF-XSim-69] 'elaborate' step finished in '4' seconds
 INFO: [USF-XSim-4] XSim::Simulate design
 INFO: [USF-XSim-61] Executing 'SIMULATE' step in 'C:/Users/37664/Desktop/code/VerilogProjects/vivado_project/rv32_sim.sim/sim_1/behav/xsim'
 INFO: [USF-XSim-98] *** Running xsim
@@ -121,12 +91,10 @@ source tb_rv32_wave.tcl
 # }
 # run 1000ns
 [TB] FAIL: last passing test=1, ram[1]=0xdeadbeef
-$finish called at time : 325 ns : File "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32.sv" Line 178
+$finish called at time : 325 ns : File "C:/Users/37664/Desktop/code/VerilogProjects/rv32/tb/tb_rv32_wave.sv" Line 178
 INFO: [USF-XSim-96] XSim completed. Design snapshot 'tb_rv32_wave_behav' loaded.
 INFO: [USF-XSim-97] XSim simulation ran for 1000ns
-launch_simulation: Time (s): cpu = 00:00:06 ; elapsed = 00:00:23 . Memory (MB): peak = 954.066 ; gain = 44.223
-close_sim
-INFO: [Simtcl 6-16] Simulation closed
-close_sim: Time (s): cpu = 00:00:01 ; elapsed = 00:00:07 . Memory (MB): peak = 954.066 ; gain = 0.000
-exit
-INFO: [Common 17-206] Exiting Vivado at Tue Apr 21 11:35:53 2026...
+launch_simulation: Time (s): cpu = 00:00:06 ; elapsed = 00:00:11 . Memory (MB): peak = 1070.637 ; gain = 0.000
+move_files -fileset sim_1 [get_files  C:/Users/37664/Desktop/code/VerilogProjects/rv32/rtl/rv32_core.sv]
+update_compile_order -fileset sources_1
+update_compile_order -fileset sim_1

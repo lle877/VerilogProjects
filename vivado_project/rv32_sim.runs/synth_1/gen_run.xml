@@ -26,6 +26,7 @@
       <FileInfo>
         <Attr Name="UsedIn" Val="synthesis"/>
         <Attr Name="UsedIn" Val="simulation"/>
+        <Attr Name="IsVisible" Val="1"/>
       </FileInfo>
     </File>
     <File Path="$PPRDIR/../rv32/rtl/rv32_core.sv">
